@@ -27,10 +27,10 @@ Statické TUI — obrazovka se překresluje na místě (nescrolluje). Obchod je 
 ## Mechaniky
 
 - **Skóre za opis** = `znaky × síla/znak × přesnost × bonus_za_rychlost × násobič`
-- **Tři typy upgradů (18 položek):** generátory (pasivní sušenky/s, běží i offline), síla (víc za znak) a globální násobiče
-- **Násobiče se sčítají, ne umocňují** — 2× kvantová klávesnice (×2) = ×4, ne ×8, takže pozdní hra neexploduje
+- **Tři typy upgradů (18 položek):** generátory (pasivní sušenky/s, běží i offline; páteř ekonomiky), síla (víc za znak) a dva globální násobiče
+- **Násobiče se sčítají, ne umocňují** — 2× stejný násobič (×3) = ×6, ne ×9, takže pozdní hra neexploduje
+- **Cenový scaling:** každý kus stojí `base × 1.5^vlastněno`; base ceny tierů rostou ~7,6× (= 1.5⁵), takže další tier se vyplatí zhruba od 5 kusů předchozího
 - **Pasivní příjem** se počítá podle reálně uplynulého času, i mezi spuštěními
-- Ceny jednotlivých položek rostou exponenciálně (klasický idle-game scaling)
 - Postup se ukládá do `save.json`
 
 ## 🕵️ Incognito mód
