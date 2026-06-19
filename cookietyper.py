@@ -233,7 +233,8 @@ def line(text="", pad=2):
 def rule():
     print(C.DIM + " " * 2 + "─" * (W - 2) + C.R)
 
-STATS_ROW = 3   # řádek, na kterém je stav (kvůli live updatu)
+STATS_ROW = 3   # řádek se stavem (kvůli live updatu)
+SHOP_ROW = 6    # řádek 1. položky obchodu (kvůli live updatu)
 
 def stats_text(s):
     """Obsah řádku se stavem (bez levého odsazení)."""
@@ -244,28 +245,33 @@ def stats_text(s):
             f"{C.GREY}+{fmt(per_char_power(s))}{t['power']} · "
             f"{t['mult']}{global_mult(s):.2f}{C.R}")
 
+def shop_text(s, i, it):
+    """Obsah jednoho řádku obchodu (bez levého odsazení)."""
+    t = sk(s)
+    A = t["accent"]
+    owned = s["owned"].get(it["id"], 0)
+    cost = item_cost(it, s["owned"])
+    afford = s["cookies"] >= cost
+    col = C.GREEN if afford else C.GREY
+    mark = "●" if afford else "○"
+    if it["kind"] == "gen":   eff = f"+{fmt(it['val'])}{t['rate']}"
+    elif it["kind"] == "pow": eff = f"+{it['val']}{t['power']}"
+    else:                     eff = f"{t['mult']}{it['val']}"
+    return (f"{col}{mark} {i:>2}. {shop_name(s, it):<22}{C.R}"
+            f"{A}{fmt(cost):>8}{t['coin']}{C.R} "
+            f"{C.DIM}{eff:<11}{C.R}{C.CYAN}x{owned}{C.R}")
+
 def draw(s, message=""):
     t = sk(s)
     A = t["accent"]
     sys.stdout.write(CLEAR)
     line(f"{A}{C.B}{t['title']}{C.R}   {C.GREY}{t['subtitle']}{C.R}")
     rule()
-    coin = t["coin"]
     line(stats_text(s))
     rule()
     line(f"{C.B}{t['shop_title']}{C.R} {C.GREY}— {t['shop_hint']}{C.R}")
     for i, it in enumerate(SHOP, 1):
-        owned = s["owned"].get(it["id"], 0)
-        cost = item_cost(it, s["owned"])
-        afford = s["cookies"] >= cost
-        col = C.GREEN if afford else C.GREY
-        mark = "●" if afford else "○"
-        if it["kind"] == "gen":   eff = f"+{fmt(it['val'])}{t['rate']}"
-        elif it["kind"] == "pow": eff = f"+{it['val']}{t['power']}"
-        else:                     eff = f"{t['mult']}{it['val']}"
-        line(f"{col}{mark} {i:>2}. {shop_name(s, it):<22}{C.R}"
-             f"{A}{fmt(cost):>8}{coin}{C.R} "
-             f"{C.DIM}{eff:<11}{C.R}{C.CYAN}x{owned}{C.R}")
+        line(shop_text(s, i, it))
     rule()
     if message:
         for ln in message.split("\n"):
@@ -374,9 +380,14 @@ class Live(threading.Thread):
             if self.on:
                 with _lock:
                     tick(self.s)
-                    sys.stdout.write(
-                        SAVECUR + f"\033[{STATS_ROW};1H\033[2K  "
-                        + stats_text(self.s) + LOADCUR)
+                    out = [SAVECUR, f"\033[{STATS_ROW};1H\033[2K  ",
+                           stats_text(self.s)]
+                    # překresli i řádky obchodu (dostupnost ●/○ a barvy)
+                    for off, it in enumerate(SHOP):
+                        out.append(f"\033[{SHOP_ROW + off};1H\033[2K  "
+                                   + shop_text(self.s, off + 1, it))
+                    out.append(LOADCUR)
+                    sys.stdout.write("".join(out))
                     sys.stdout.flush()
             time.sleep(self.interval)
 
