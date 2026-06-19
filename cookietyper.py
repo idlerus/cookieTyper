@@ -43,7 +43,8 @@ LIVE = sys.stdout.isatty()               # živý update jen v interaktivním te
 _lock = threading.Lock()                 # synchronizace kreslení mezi vlákny
 
 # ── Texty k opisování ──────────────────────────────────────────────────────
-SNIPPETS = [
+# Dva oddělené pooly: klasický herní vs. incognito (vypadá jako data/logy).
+SNIPPETS_GAME = [
     "the quick brown fox jumps over the lazy dog",
     "sušenky se nejlépe pečou v rozpálené troubě",
     "git commit -m fix opraven pad pri startu",
@@ -58,7 +59,79 @@ SNIPPETS = [
     "the terminal is the only interface you need",
     "prokrastinace je nepřítel produktivního psaní",
     "napsat řádek kódu je lepší než o něm mluvit",
+    "pack my box with five dozen liquor jugs",
+    "how razorback jumping frogs can level six piqued gymnasts",
+    "trpaslík zběsile pílil kládu napříč zahradou",
+    "příliš žluťoučký kůň úpěl ďábelské ódy",
+    "v houšti křičí sýček a vítr ševelí v listí",
+    "muž šel do lesa a nesl si pytel plný hub",
+    "tečka čárka otazník a vykřičník dělají větu",
+    "sleduj kurzor jak tančí po černé obrazovce",
+    "cookies jsou palivo každého správného nerda",
+    "psaní naslepo je dovednost na celý život",
+    "deboček líně leží na vyhřátém parapetu",
+    "rychlé prsty sklízejí sladkou odměnu",
+    "do the hard thing first then drink coffee",
+    "simplicity is the ultimate sophistication",
+    "code is read far more often than it is written",
+    "make it work make it right make it fast",
+    "tab versus space je věčná svatá válka",
+    "klid rozvaha a sušenka vyřeší každý problém",
+    "talk is cheap show me the working code",
+    "naučit se psát všemi deseti se vyplatí",
+    "errors should never pass silently in production",
+    "měřit dvakrát řezat jednou platí i v kódu",
+    "perfektní opis je malé tiché vítězství",
+    "buď jako voda příteli a piš plynule dál",
+    "každý mistr klávesnice začínal jedním písmenem",
+    "ostrý pohled klidná ruka a sušenky se sypou",
 ]
+
+SNIPPETS_INCOGNITO = [
+    "INFO  worker-03 processed batch id=4821 in 142ms",
+    "WARN  retrying connection to upstream node 10.0.4.7",
+    "ERROR checksum mismatch on shard 12 recomputing now",
+    "DEBUG flushing buffer 8192 bytes to cold storage tier",
+    "GET /api/v2/records?offset=4400&limit=200 200 OK 31ms",
+    "POST /ingest payload=2.4kb queue_depth=17 accepted",
+    "kafka topic events partition 3 offset 998241 committed",
+    "select id ts payload from stream where status equals open",
+    "rebalancing consumer group analytics across 6 brokers",
+    "snapshot 0x9af3 written 1.2gb dedup ratio 3.4 to 1",
+    "thread pool size 16 active 11 idle 5 queued 240 tasks",
+    "cache hit ratio 0.94 evictions 38 ttl 300s region eu",
+    "compacting segment 000124.log into 000125.log 71pct",
+    "heartbeat ok lag 0ms peers 5 leader node-2 term 19",
+    "validate record uuid 7c2a checksum sha256 verified",
+    "pipeline stage map filter reduce committed downstream",
+    "backpressure detected throttling producer to 4k ops",
+    "rotating log file at 512mb gzip level 6 retain 7 days",
+    "tls handshake completed cipher aes 256 gcm sha384",
+    "migrating table users add column last_seen timestamp",
+    "vacuum analyze reclaimed 240mb across 14 relations",
+    "scheduler dispatched job 91 to runner us east 1c",
+    "metrics flushed p50 12ms p95 88ms p99 210ms ok",
+    "load balancer marked node-4 healthy after 3 probes",
+    "deserializing avro schema v7 fields 22 nullable 4",
+    "wal replay finished 18234 entries in 1.8 seconds",
+    "circuit breaker half open probing payments service",
+    "sharding key user_id hash mod 32 routed to bucket 9",
+    "grpc stream opened method Ingest deadline 5000ms",
+    "index rebuild on orders btree 4.1m rows 22 seconds",
+    "rate limit window 60s tokens 1000 remaining 743 ok",
+    "replica set primary stepped down election in progress",
+    "parsing csv header 12 cols delimiter comma utf eight",
+    "object store put bucket cold key 2026 06 part 0007",
+    "garbage collector pause 4ms young gen 64mb promoted",
+    "config reloaded watchers 8 no schema drift detected",
+    "dns resolved api internal to 10 0 1 24 ttl 30s",
+    "batch window closed 512 records emitting aggregate",
+    "auth token refreshed scope read write expires 3600s",
+    "throughput 48000 rec per second sustained for 90s",
+]
+
+def snippets(s):
+    return SNIPPETS_INCOGNITO if s.get("incognito") else SNIPPETS_GAME
 
 # ── Obchod ─────────────────────────────────────────────────────────────────
 # kind: gen=pasivní/s · pow=+za znak · mult=globální násobič
@@ -204,7 +277,7 @@ def draw(s, message=""):
 # ── Akce ───────────────────────────────────────────────────────────────────
 def do_type(s):
     t = sk(s)
-    text = random.choice(SNIPPETS)
+    text = random.choice(snippets(s))
     sys.stdout.write(CLEAR)
     line(f"{C.CYAN}{C.B}{t['type_title']}{C.R} {C.GREY}({t['type_hint']}){C.R}")
     rule()
