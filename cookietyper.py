@@ -15,6 +15,7 @@ import json
 import os
 import random
 import sys
+import threading
 import time
 
 SAVE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "save.json")
@@ -36,6 +37,10 @@ if not _supports_color():
 
 CLEAR = "\033[2J\033[H"
 HIDE = "\033[?25l"; SHOW = "\033[?25h"
+SAVECUR = "\0337"; LOADCUR = "\0338"     # ulož / obnov pozici kurzoru
+
+LIVE = sys.stdout.isatty()               # živý update jen v interaktivním terminálu
+_lock = threading.Lock()                 # synchronizace kreslení mezi vlákny
 
 # ── Texty k opisování ──────────────────────────────────────────────────────
 SNIPPETS = [
@@ -155,6 +160,17 @@ def line(text="", pad=2):
 def rule():
     print(C.DIM + " " * 2 + "─" * (W - 2) + C.R)
 
+STATS_ROW = 3   # řádek, na kterém je stav (kvůli live updatu)
+
+def stats_text(s):
+    """Obsah řádku se stavem (bez levého odsazení)."""
+    t = sk(s)
+    A = t["accent"]
+    return (f"{A}{C.B}{fmt(s['cookies']):>10} {t['unit']}{C.R}   "
+            f"{C.GREEN}{fmt(cps(s))}{t['rate']}{C.R}   "
+            f"{C.GREY}+{fmt(per_char_power(s))}{t['power']} · "
+            f"{t['mult']}{global_mult(s):.2f}{C.R}")
+
 def draw(s, message=""):
     t = sk(s)
     A = t["accent"]
@@ -162,10 +178,7 @@ def draw(s, message=""):
     line(f"{A}{C.B}{t['title']}{C.R}   {C.GREY}{t['subtitle']}{C.R}")
     rule()
     coin = t["coin"]
-    line(f"{A}{C.B}{fmt(s['cookies']):>10} {t['unit']}{C.R}   "
-         f"{C.GREEN}{fmt(cps(s))}{t['rate']}{C.R}   "
-         f"{C.GREY}+{fmt(per_char_power(s))}{t['power']} · "
-         f"{t['mult']}{global_mult(s):.2f}{C.R}")
+    line(stats_text(s))
     rule()
     line(f"{C.B}{t['shop_title']}{C.R} {C.GREY}— {t['shop_hint']}{C.R}")
     for i, it in enumerate(SHOP, 1):
@@ -271,6 +284,30 @@ def load():
     except (OSError, json.JSONDecodeError):
         return None
 
+# ── Živý update čítače ─────────────────────────────────────────────────────
+class Live(threading.Thread):
+    """Na pozadí překresluje jen řádek se stavem, aby čítač sušenek
+    běžel v reálném čase i během čekání na vstup. Rozepsaný příkaz
+    nerozhází — pozici kurzoru si uloží a vrátí."""
+    def __init__(self, s, interval=0.25):
+        super().__init__(daemon=True)
+        self.s = s
+        self.interval = interval
+        self.on = False        # překreslovat?
+        self.stopped = False
+
+    def run(self):
+        while not self.stopped:
+            if self.on:
+                with _lock:
+                    tick(self.s)
+                    sys.stdout.write(
+                        SAVECUR + f"\033[{STATS_ROW};1H\033[2K  "
+                        + stats_text(self.s) + LOADCUR)
+                    sys.stdout.flush()
+            time.sleep(self.interval)
+
+
 # ── Hlavní smyčka ──────────────────────────────────────────────────────────
 def main():
     start_incognito = any(a in ("-i", "--incognito", "--stealth") for a in sys.argv[1:])
@@ -279,16 +316,23 @@ def main():
         s["incognito"] = True
     message = (f"{C.GREEN}saved session restored.{C.R}" if os.path.exists(SAVE_PATH)
                else f"{C.GREY}{sk(s)['newgame']}{C.R}")
+    live = Live(s)
+    if LIVE:
+        live.start()
     try:
         while True:
-            tick(s)
-            sys.stdout.write(HIDE)
-            draw(s, message)
-            sys.stdout.write(SHOW)
+            live.on = False
+            with _lock:
+                tick(s)
+                sys.stdout.write(HIDE)
+                draw(s, message)
+                sys.stdout.write(SHOW)
+            live.on = True
             try:
                 raw = input(f"  {sk(s)['accent']}{sk(s)['prompt']}{C.R} ").strip().lower()
             except (EOFError, KeyboardInterrupt):
                 save(s); break
+            live.on = False
 
             if raw == "":
                 message = do_type(s)
@@ -315,6 +359,7 @@ def main():
             else:
                 message = f"{C.RED}unknown '{raw}'. [enter] [id] [q]{C.R}"
     finally:
+        live.stopped = True
         sys.stdout.write(SHOW)
         print(f"\n  {C.GREY}{sk(s)['bye']}{C.R}")
 
