@@ -137,15 +137,24 @@ def snippets(s):
 # kind: gen=pasivní/s · pow=+za znak · mult=globální násobič
 # name=herní popisek, alt=incognito popisek
 SHOP = [
-    {"id": "intern",  "name": "Stážista",             "alt": "io.reader",     "kind": "gen",  "val": 0.5, "cost": 50,     "rate": 1.15},
-    {"id": "keyb",    "name": "Mechanická klávesnice", "alt": "buffer.x2",     "kind": "pow",  "val": 2,   "cost": 120,    "rate": 1.20},
-    {"id": "typist",  "name": "Písař na plný úvazek",  "alt": "worker.pool",   "kind": "gen",  "val": 3,   "cost": 400,    "rate": 1.15},
-    {"id": "ergo",    "name": "Ergonomický setup",     "alt": "cache.layer",   "kind": "pow",  "val": 5,   "cost": 1100,   "rate": 1.22},
-    {"id": "steno",   "name": "Stenograf",            "alt": "batch.proc",    "kind": "gen",  "val": 16,  "cost": 2600,   "rate": 1.15},
-    {"id": "energy",  "name": "Energy drink",         "alt": "jit.compile",   "kind": "mult", "val": 1.5, "cost": 6000,   "rate": 1.40},
-    {"id": "ai",      "name": "AI našeptávač",         "alt": "async.queue",   "kind": "gen",  "val": 90,  "cost": 14000,  "rate": 1.15},
-    {"id": "macro",   "name": "Makro farma",          "alt": "shard.cluster", "kind": "gen",  "val": 480, "cost": 90000,  "rate": 1.15},
-    {"id": "quantum", "name": "Kvantová klávesnice",  "alt": "vectorize.simd","kind": "mult", "val": 2.0, "cost": 250000, "rate": 1.55},
+    {"id": "intern",   "name": "Stážista",             "alt": "io.reader",      "kind": "gen",  "val": 0.5,   "cost": 50,        "rate": 1.15},
+    {"id": "keyb",     "name": "Mechanická klávesnice", "alt": "buffer.x2",      "kind": "pow",  "val": 2,     "cost": 120,       "rate": 1.20},
+    {"id": "typist",   "name": "Písař na plný úvazek",  "alt": "worker.pool",    "kind": "gen",  "val": 3,     "cost": 400,       "rate": 1.15},
+    {"id": "ergo",     "name": "Ergonomický setup",     "alt": "cache.layer",    "kind": "pow",  "val": 5,     "cost": 1100,      "rate": 1.22},
+    {"id": "steno",    "name": "Stenograf",            "alt": "batch.proc",     "kind": "gen",  "val": 16,    "cost": 2600,      "rate": 1.15},
+    {"id": "energy",   "name": "Energy drink",         "alt": "jit.compile",    "kind": "mult", "val": 1.5,   "cost": 6000,      "rate": 1.30},
+    {"id": "switches", "name": "Lubed switche",        "alt": "simd.lane",      "kind": "pow",  "val": 12,    "cost": 9000,      "rate": 1.20},
+    {"id": "ai",       "name": "AI našeptávač",         "alt": "async.queue",    "kind": "gen",  "val": 90,    "cost": 14000,     "rate": 1.15},
+    {"id": "hall",     "name": "Hall-effect klávesy",  "alt": "zero.copy",      "kind": "pow",  "val": 30,    "cost": 40000,     "rate": 1.22},
+    {"id": "macro",    "name": "Makro farma",          "alt": "shard.cluster",  "kind": "gen",  "val": 480,   "cost": 90000,     "rate": 1.15},
+    {"id": "overclk",  "name": "Overclock",            "alt": "turbo.boost",    "kind": "mult", "val": 3.0,   "cost": 180000,    "rate": 1.35},
+    {"id": "quantum",  "name": "Kvantová klávesnice",  "alt": "vectorize.simd", "kind": "mult", "val": 2.0,   "cost": 250000,    "rate": 1.55},
+    {"id": "farm",     "name": "Server farma",         "alt": "node.fleet",     "kind": "gen",  "val": 2600,  "cost": 600000,    "rate": 1.15},
+    {"id": "neurkey",  "name": "Neurální link",        "alt": "kernel.bypass",  "kind": "pow",  "val": 75,    "cost": 1500000,   "rate": 1.25},
+    {"id": "datactr",  "name": "Datacentrum",          "alt": "region.scale",   "kind": "gen",  "val": 14000, "cost": 4000000,   "rate": 1.15},
+    {"id": "copilot",  "name": "AI copilot",           "alt": "ml.infer",       "kind": "mult", "val": 5.0,   "cost": 12000000,  "rate": 1.40},
+    {"id": "cluster",  "name": "Neurální cluster",     "alt": "gpu.cluster",    "kind": "gen",  "val": 80000, "cost": 30000000,  "rate": 1.15},
+    {"id": "singular", "name": "Singularita",          "alt": "hyperscale",     "kind": "mult", "val": 10.0,  "cost": 150000000, "rate": 1.50},
 ]
 
 # ── Skiny (běžný vs incognito) ─────────────────────────────────────────────
@@ -196,11 +205,11 @@ def per_char_power(s):
                      for it in SHOP if it["kind"] == "pow")
 
 def global_mult(s):
-    m = 1.0
-    for it in SHOP:
-        if it["kind"] == "mult":
-            m *= it["val"] ** s["owned"].get(it["id"], 0)
-    return m
+    # Násobiče se SČÍTAJÍ, ne kombinují exponenciálně:
+    # 2x kvantová (x2) = 4x, ne 8x. Bez násobiče je základ 1x.
+    bonus = sum(it["val"] * s["owned"].get(it["id"], 0)
+                for it in SHOP if it["kind"] == "mult")
+    return max(1.0, bonus)
 
 def cps(s):
     base = sum(it["val"] * s["owned"].get(it["id"], 0)
